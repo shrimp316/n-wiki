@@ -14,6 +14,8 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchFocused, setSearchFocused] = useState(false)
 
   const unreadCount = notifications.filter(n => !n.is_read).length
 
@@ -108,11 +110,45 @@ export default function Navbar() {
       padding: '0 24px', height: '52px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     }}>
-      <Link href="/" style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', textDecoration: 'none', letterSpacing: '-0.3px' }}>
+      <Link href="/" style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', textDecoration: 'none', letterSpacing: '-0.3px', flexShrink: 0 }}>
         N의 위키
       </Link>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      {/* 검색창 */}
+      <div style={{ flex: 1, maxWidth: '320px', margin: '0 24px' }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <span style={{ position: 'absolute', left: '10px', fontSize: '13px', color: '#A8A29E', pointerEvents: 'none' }}>🔍</span>
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && searchQuery.trim()) {
+                router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+                setSearchQuery('')
+              }
+            }}
+            placeholder="검색..."
+            style={{
+              width: '100%',
+              height: '34px',
+              border: `1px solid ${searchFocused ? '#A8A29E' : '#E7E5E4'}`,
+              borderRadius: '8px',
+              paddingLeft: '32px',
+              paddingRight: '12px',
+              fontSize: '13px',
+              color: '#1C1917',
+              background: '#FAFAF9',
+              fontFamily: 'inherit',
+              outline: 'none',
+              transition: 'border-color 0.15s',
+            }}
+          />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
         {nickname ? (
           <>
             {/* 알림 벨 */}
