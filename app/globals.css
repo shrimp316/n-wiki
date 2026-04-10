@@ -3,25 +3,78 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #FAFAF9;
+  --surface: #FFFFFF;
+  --border: #E7E5E4;
+  --text: #1C1917;
+  --muted: #78716C;
+  --subtle: #A8A29E;
+  --accent: #1C1917;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* Quill 에디터 스타일 재정의 */
+.ql-container {
+  font-family: inherit !important;
+  font-size: 14px !important;
+  border-bottom-left-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+  border-color: var(--border) !important;
 }
+
+.ql-toolbar {
+  border-top-left-radius: 8px !important;
+  border-top-right-radius: 8px !important;
+  border-color: var(--border) !important;
+  background: var(--bg) !important;
+}
+
+.ql-editor {
+  min-height: 200px;
+  line-height: 1.8 !important;
+}
+
+.ql-editor.ql-blank::before {
+  color: var(--subtle) !important;
+  font-style: normal !important;
+}
+
+/* 위키 본문 렌더링 */
+.wiki-body h2 { font-size: 18px; font-weight: 600; margin: 24px 0 10px; color: var(--text); }
+.wiki-body h3 { font-size: 15px; font-weight: 600; margin: 18px 0 8px; color: var(--text); }
+.wiki-body p  { margin-bottom: 12px; line-height: 1.8; }
+.wiki-body ul, .wiki-body ol { padding-left: 20px; margin-bottom: 12px; }
+.wiki-body li { margin-bottom: 4px; }
+.wiki-body blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 14px;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.wiki-body a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+.wiki-body img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+
+/* 위키 내부 링크 */
+.wiki-link {
+  color: var(--text);
+  background: #F5F5F4;
+  border-radius: 3px;
+  padding: 0 3px;
+  text-decoration: none;
+  font-size: 13px;
+}
+.wiki-link:hover { background: var(--border); }
