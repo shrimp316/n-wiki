@@ -27,7 +27,7 @@ function parseWikiLinks(html: string): string {
 }
 
 export default function WikiPage({ params }: { params: { slug: string } }) {
-  const { slug } = params
+  const slug = decodeURIComponent(params.slug)
   const supabase = createClient()
   const router = useRouter()
 

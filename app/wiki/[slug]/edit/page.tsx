@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation'
 const QuillEditor = dynamic(() => import('@/components/QuillEditor'), { ssr: false })
 
 export default function EditDocPage({ params }: { params: { slug: string } }) {
-  const { slug } = params
+  const slug = decodeURIComponent(params.slug)
   const supabase = createClient()
   const router = useRouter()
 
