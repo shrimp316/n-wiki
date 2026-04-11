@@ -34,3 +34,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+supabase-admin.sql
+supabase-discussions-v2.sql
+supabase-discussions.sql
+supabase-schema.sql

@@ -55,7 +55,7 @@ export default function SignupPage() {
       password,
       options: {
         data: { nickname, interests: selected },
-        emailRedirectTo: `${location.origin}/auth/callback`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? location.origin}/auth/callback`,
       },
     })
     if (error) { setError(error.message); setLoading(false) }
