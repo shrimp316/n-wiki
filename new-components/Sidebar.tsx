@@ -22,6 +22,7 @@ const NAV_ITEMS = [
 const EXTRA_ITEMS = [
   { icon: 'wiki',     label: '위키 문서',   href: '/wiki' },
   { icon: 'bookmark', label: '저장한 항목', href: '/saved' },
+  { icon: 'person',   label: '마이페이지',  href: '/profile' },
 ]
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -88,29 +89,15 @@ export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }: Sid
   const router = useRouter()
   const [nickname, setNickname] = useState<string | null>(null)
   const [email, setEmail] = useState<string | null>(null)
-  const [authed, setAuthed] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
-        setAuthed(true)
         setEmail(data.user.email ?? null)
         supabase.from('profiles').select('nickname').eq('id', data.user.id).single()
           .then(({ data: p }) => { if (p) setNickname(p.nickname) })
-      } else {
-        setAuthed(false)
-        setNickname(null)
-        setEmail(null)
       }
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      if (!session) {
-        setAuthed(false); setNickname(null); setEmail(null)
-      } else {
-        setAuthed(true); setEmail(session.user.email ?? null)
-      }
-    })
-    return () => subscription.unsubscribe()
   }, [])
 
   // 열릴 때 body 스크롤 잠금
@@ -196,49 +183,11 @@ export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }: Sid
           </div>
 
           <div style={{ fontSize: '15px', fontWeight: 600, color: '#fff', letterSpacing: '-0.3px' }}>
-            {authed ? (nickname ?? 'N의 위키 사용자') : '게스트'}
+            {nickname ?? 'N의 위키 사용자'}
           </div>
           <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', marginTop: '2px' }}>
-            {authed ? (email ?? '') : '로그인이 필요해요'}
+            {email ?? '로그인이 필요해요'}
           </div>
-
-          {!authed && (
-            <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
-              <Link
-                href="/auth/login"
-                onClick={onClose}
-                style={{
-                  flex: 1,
-                  fontSize: '12px', fontWeight: 600,
-                  color: '#1a8cf5',
-                  background: 'rgba(255,255,255,0.95)',
-                  textAlign: 'center',
-                  textDecoration: 'none',
-                  padding: '8px 0',
-                  borderRadius: '10px',
-                }}
-              >
-                로그인
-              </Link>
-              <Link
-                href="/auth/signup"
-                onClick={onClose}
-                style={{
-                  flex: 1,
-                  fontSize: '12px', fontWeight: 600,
-                  color: '#fff',
-                  background: 'rgba(255,255,255,0.22)',
-                  border: '1px solid rgba(255,255,255,0.5)',
-                  textAlign: 'center',
-                  textDecoration: 'none',
-                  padding: '8px 0',
-                  borderRadius: '10px',
-                }}
-              >
-                회원가입
-              </Link>
-            </div>
-          )}
         </div>
 
         {/* 주요 메뉴 */}
@@ -322,26 +271,24 @@ export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }: Sid
         </nav>
 
         {/* 로그아웃 */}
-        {authed && (
-          <div style={{
-            padding: '16px 24px',
-            paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-            borderTop: '1px solid rgba(100,150,200,0.15)',
-            flexShrink: 0,
-          }}>
-            <button
-              onClick={handleLogout}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: '#5a7a9a', fontSize: '13px', fontFamily: 'inherit',
-              }}
-            >
-              <span style={{ color: '#5a7a9a' }}>{ICONS.logout}</span>
-              로그아웃
-            </button>
-          </div>
-        )}
+        <div style={{
+          padding: '16px 24px',
+          paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+          borderTop: '1px solid rgba(100,150,200,0.15)',
+          flexShrink: 0,
+        }}>
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#5a7a9a', fontSize: '13px', fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ color: '#5a7a9a' }}>{ICONS.logout}</span>
+            로그아웃
+          </button>
+        </div>
       </aside>
     </>
   )

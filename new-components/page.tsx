@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import AppHeader from '@/components/AppHeader'
 import BottomNav, { TabType } from '@/components/BottomNav'
 import Sidebar from '@/components/Sidebar'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import type { Document, Discussion } from '@/lib/supabase'
 
 type DocWithMeta = Document & {
@@ -24,15 +23,13 @@ const STATUS_MAP: Record<string, { label: string; color: string; dot: string }> 
 }
 const TAB_TITLES: Record<TabType, string> = {
   home: 'N의 위키',
-  discussion: '카카오톡 담론요약',
+  discussion: '담론',
   procon: '찬반의견',
 }
 
-function HomeView() {
+export default function HomePage() {
   const supabase = createClient()
-  const params = useSearchParams()
-  const initialTab = (params.get('tab') as TabType) || 'home'
-  const [tab, setTab] = useState<TabType>(initialTab)
+  const [tab, setTab] = useState<TabType>('home')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [docs, setDocs] = useState<DocWithMeta[]>([])
   const [discussions, setDiscussions] = useState<DiscussionWithCount[]>([])
@@ -44,51 +41,35 @@ function HomeView() {
   }, [])
 
   useEffect(() => {
-    if (tab === 'home') loadHome()
-    else if (tab === 'discussion') loadKakaoDocs()
-    else if (tab === 'procon') loadProcons()
+    if (tab === 'home') loadDocs('kakao')
+    else if (tab === 'discussion') loadDiscussions(null)
+    else if (tab === 'procon') loadDiscussions('pros_cons')
   }, [tab])
 
-  async function loadHome() {
-    setLoading(true)
-    const [docsRes, discRes] = await Promise.all([
-      supabase.from('documents')
-        .select('*, profiles!documents_author_id_fkey(nickname), kakao_meta(talk_date, participants)')
-        .eq('type', 'kakao').eq('status', 'published')
-        .order('created_at', { ascending: false }).limit(3),
-      supabase.from('discussions')
-        .select('*, profiles!discussions_author_id_fkey(nickname), discussion_participants(user_id)')
-        .eq('format', 'pros_cons')
-        .order('created_at', { ascending: false }).limit(3),
-    ])
-    setDocs((docsRes.data as DocWithMeta[]) || [])
-    setDiscussions(((discRes.data || []).map(d => ({
-      ...d, participant_count: (d.discussion_participants || []).length,
-    })) as DiscussionWithCount[]))
-    setLoading(false)
-  }
-
-  async function loadKakaoDocs() {
+  async function loadDocs(type: string) {
     setLoading(true)
     const { data } = await supabase
       .from('documents')
       .select('*, profiles!documents_author_id_fkey(nickname), kakao_meta(talk_date, participants)')
-      .eq('type', 'kakao').eq('status', 'published')
+      .eq('type', type).eq('status', 'published')
       .order('created_at', { ascending: false })
     setDocs((data as DocWithMeta[]) || [])
     setLoading(false)
   }
 
-  async function loadProcons() {
+  async function loadDiscussions(format: string | null) {
     setLoading(true)
-    const { data } = await supabase
+    let query = supabase
       .from('discussions')
       .select('*, profiles!discussions_author_id_fkey(nickname), discussion_participants(user_id)')
-      .eq('format', 'pros_cons')
       .order('created_at', { ascending: false })
-    setDiscussions(((data || []).map(d => ({
-      ...d, participant_count: (d.discussion_participants || []).length,
-    })) as DiscussionWithCount[]))
+    if (format) query = query.eq('format', format)
+    const { data } = await query
+    const mapped = (data || []).map(d => ({
+      ...d,
+      participant_count: (d.discussion_participants || []).length,
+    })) as DiscussionWithCount[]
+    setDiscussions(mapped)
     setLoading(false)
   }
 
@@ -104,6 +85,7 @@ function HomeView() {
       display: 'flex',
       flexDirection: 'column',
     }}>
+      {/* 사이드바 */}
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -111,11 +93,13 @@ function HomeView() {
         onTabChange={(t) => { setTab(t); setSidebarOpen(false) }}
       />
 
+      {/* 헤더 */}
       <AppHeader
         onMenuOpen={() => setSidebarOpen(true)}
         title={TAB_TITLES[tab]}
       />
 
+      {/* 컨텐츠 */}
       <main style={{
         flex: 1,
         maxWidth: '680px',
@@ -124,17 +108,18 @@ function HomeView() {
         padding: '16px 16px 96px',
       }}>
 
-        {/* ── 홈: 대시보드 ── */}
+        {/* ── 홈 탭: 담론 카카오 목록 ── */}
         {tab === 'home' && (
           <>
-            {/* 카카오톡 담론요약 미리보기 */}
-            <div style={sectionHeader}>
-              <span style={sectionTitle}>최근 카카오톡 담론요약</span>
-              <button onClick={() => setTab('discussion')} style={moreBtn}>더보기 →</button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: '#0d1f3c' }}>최근 담론 아카이브</span>
+              {userId && (
+                <Link href="/wiki/new?type=kakao" style={actionBtn}>+ 작성</Link>
+              )}
             </div>
             {loading ? <p style={emptyStyle}>불러오는 중...</p> :
-              docs.length === 0 ? <p style={emptyStyle}>아직 담론 요약이 없어요</p> :
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+              docs.length === 0 ? <p style={emptyStyle}>아직 문서가 없어요</p> :
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {docs.map(doc => (
                   <Link key={doc.id} href={`/wiki/${doc.slug}`} style={{ textDecoration: 'none' }}>
                     <div style={glassCard}>
@@ -143,10 +128,12 @@ function HomeView() {
                           {doc.kakao_meta[0].talk_date}
                         </span>
                       )}
-                      <h2 style={cardTitle}>{doc.title}</h2>
-                      <div style={cardMetaRow}>
+                      <h2 style={{ fontSize: '15px', fontWeight: 500, color: '#0d1f3c', marginBottom: '6px', lineHeight: 1.4 }}>
+                        {doc.title}
+                      </h2>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                         {doc.tags?.slice(0,3).map(t => (
-                          <span key={t} style={tagStyle}>#{t}</span>
+                          <span key={t} style={{ fontSize: '11px', color: '#8faec8' }}>#{t}</span>
                         ))}
                         <span style={{ fontSize: '11px', color: '#8faec8', marginLeft: 'auto' }}>
                           {doc.profiles?.nickname} · {fmt(doc.created_at)}
@@ -157,14 +144,18 @@ function HomeView() {
                 ))}
               </div>
             }
+          </>
+        )}
 
-            {/* 찬반의견 미리보기 */}
-            <div style={sectionHeader}>
-              <span style={sectionTitle}>최근 찬반의견</span>
-              <button onClick={() => setTab('procon')} style={moreBtn}>더보기 →</button>
+        {/* ── 담론 탭 ── */}
+        {tab === 'discussion' && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: '#0d1f3c' }}>전체 담론</span>
+              {userId && <Link href="/discussions/new" style={actionBtn}>+ 발제하기</Link>}
             </div>
             {loading ? <p style={emptyStyle}>불러오는 중...</p> :
-              discussions.length === 0 ? <p style={emptyStyle}>아직 찬반 토론이 없어요</p> :
+              discussions.length === 0 ? <p style={emptyStyle}>아직 담론이 없어요</p> :
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {discussions.map(d => {
                   const st = STATUS_MAP[d.status] || STATUS_MAP.ended
@@ -180,11 +171,16 @@ function HomeView() {
                             <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: st.dot, display: 'inline-block' }} />
                             {st.label}
                           </span>
+                          <span style={{ fontSize: '10px', color: '#8faec8' }}>
+                            {d.format === 'pros_cons' ? '찬반형' : '다관점형'}
+                          </span>
                         </div>
-                        <h2 style={cardTitle}>{d.title}</h2>
-                        <div style={cardMetaRow}>
+                        <h2 style={{ fontSize: '14px', fontWeight: 500, color: '#0d1f3c', marginBottom: '6px', lineHeight: 1.4 }}>
+                          {d.title}
+                        </h2>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                           {d.tags?.slice(0,3).map(t => (
-                            <span key={t} style={tagStyle}>#{t}</span>
+                            <span key={t} style={{ fontSize: '10px', color: '#8faec8' }}>#{t}</span>
                           ))}
                           <span style={{ fontSize: '11px', color: '#8faec8', marginLeft: 'auto' }}>
                             참여 {d.participant_count}명
@@ -199,47 +195,12 @@ function HomeView() {
           </>
         )}
 
-        {/* ── 담론: 카카오톡 담론요약 전체 ── */}
-        {tab === 'discussion' && (
-          <>
-            <div style={sectionHeader}>
-              <span style={sectionTitle}>카카오톡 담론 아카이브</span>
-              {userId && <Link href="/wiki/new?type=kakao" style={actionBtn}>+ 작성</Link>}
-            </div>
-            {loading ? <p style={emptyStyle}>불러오는 중...</p> :
-              docs.length === 0 ? <p style={emptyStyle}>아직 담론 요약이 없어요</p> :
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {docs.map(doc => (
-                  <Link key={doc.id} href={`/wiki/${doc.slug}`} style={{ textDecoration: 'none' }}>
-                    <div style={glassCard}>
-                      {doc.kakao_meta?.[0] && (
-                        <span style={{ fontSize: '11px', color: '#8faec8', display: 'block', marginBottom: '4px' }}>
-                          {doc.kakao_meta[0].talk_date}
-                        </span>
-                      )}
-                      <h2 style={cardTitle}>{doc.title}</h2>
-                      <div style={cardMetaRow}>
-                        {doc.tags?.slice(0,3).map(t => (
-                          <span key={t} style={tagStyle}>#{t}</span>
-                        ))}
-                        <span style={{ fontSize: '11px', color: '#8faec8', marginLeft: 'auto' }}>
-                          {doc.profiles?.nickname} · {fmt(doc.created_at)}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            }
-          </>
-        )}
-
-        {/* ── 찬반의견: 찬반 토론 전체 ── */}
+        {/* ── 찬반의견 탭 ── */}
         {tab === 'procon' && (
           <>
-            <div style={sectionHeader}>
-              <span style={sectionTitle}>찬반 토론</span>
-              {userId && <Link href="/discussions/new?format=pros_cons" style={actionBtn}>+ 발제하기</Link>}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: '#0d1f3c' }}>찬반 토론</span>
+              {userId && <Link href="/discussions/new" style={actionBtn}>+ 발제하기</Link>}
             </div>
             {loading ? <p style={emptyStyle}>불러오는 중...</p> :
               discussions.length === 0 ? <p style={emptyStyle}>아직 찬반 토론이 없어요</p> :
@@ -259,10 +220,12 @@ function HomeView() {
                             {st.label}
                           </span>
                         </div>
-                        <h2 style={cardTitle}>{d.title}</h2>
-                        <div style={cardMetaRow}>
+                        <h2 style={{ fontSize: '14px', fontWeight: 500, color: '#0d1f3c', marginBottom: '6px', lineHeight: 1.4 }}>
+                          {d.title}
+                        </h2>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                           {d.tags?.slice(0,3).map(t => (
-                            <span key={t} style={tagStyle}>#{t}</span>
+                            <span key={t} style={{ fontSize: '10px', color: '#8faec8' }}>#{t}</span>
                           ))}
                           <span style={{ fontSize: '11px', color: '#8faec8', marginLeft: 'auto' }}>
                             참여 {d.participant_count}명
@@ -278,39 +241,12 @@ function HomeView() {
         )}
       </main>
 
+      {/* 하단 네비 */}
       <BottomNav activeTab={tab} onTabChange={setTab} />
     </div>
   )
 }
 
-export default function HomePage() {
-  return (
-    <Suspense>
-      <HomeView />
-    </Suspense>
-  )
-}
-
-const sectionHeader: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  marginBottom: '12px', marginTop: '4px',
-}
-const sectionTitle: React.CSSProperties = {
-  fontSize: '14px', fontWeight: 600, color: '#0d1f3c',
-}
-const moreBtn: React.CSSProperties = {
-  fontSize: '12px', color: '#1a8cf5', background: 'none', border: 'none',
-  cursor: 'pointer', fontFamily: 'inherit', padding: 0,
-}
-const cardTitle: React.CSSProperties = {
-  fontSize: '15px', fontWeight: 500, color: '#0d1f3c', marginBottom: '6px', lineHeight: 1.4,
-}
-const cardMetaRow: React.CSSProperties = {
-  display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center',
-}
-const tagStyle: React.CSSProperties = {
-  fontSize: '11px', color: '#8faec8',
-}
 const glassCard: React.CSSProperties = {
   padding: '14px 16px',
   background: 'rgba(255,255,255,0.82)',

@@ -1,0 +1,50 @@
+No,파일경로,컴포넌트/함수,HTTP메서드,테이블,Operation,필터/조건,선택/삽입컬럼,설명
+1,app/auth/signup/page.tsx,SignupPage - useEffect,GET,profiles,select,.eq('nickname' nickname) .maybeSingle(),nickname,닉네임 중복 확인 (디바운스 400ms)
+2,app/auth/callback/route.ts,GET handler,GET,auth,-,code 쿼리파라미터,-,OAuth 코드 교환 → exchangeCodeForSession() → 홈 리다이렉트
+3,app/page.tsx,HomePage - loadDocs(),GET,documents,select,.eq('type' tab) .eq('status' 'published') .order(created_at desc),* + profiles(nickname) + kakao_meta(talk_date participants),홈 탭 문서 목록 (카카오/개념 타입별)
+4,app/page.tsx,HomePage - loadDiscussions(),GET,discussions,select,.order(created_at desc),* + profiles(nickname) + discussion_participants(user_id),홈 탭 토론 목록 전체
+5,app/search/page.tsx,SearchResults - runSearch(),GET,documents,select,.eq('status' 'published') .or(title.ilike/body.ilike) .order(created_at desc) .limit(20),id + slug + title + type + tags + created_at + profiles(nickname),문서 제목/본문 ilike 검색
+6,app/search/page.tsx,SearchResults - runSearch(),GET,discussions,select,.or(title.ilike/body.ilike) .order(created_at desc) .limit(20),id + title + tags + created_at + profiles(nickname),토론 제목/본문 ilike 검색
+7,app/wiki/new/page.tsx,NewDocForm - handleSubmit(),POST,documents,insert,-,slug + title + type + body + status + author_id + tags + like_count,신규 문서 생성
+8,app/wiki/new/page.tsx,NewDocForm - handleSubmit(),POST,kakao_meta,insert,-,document_id + talk_date,카카오 담론 날짜 메타 저장
+9,app/wiki/new/page.tsx,NewDocForm - handleSubmit(),POST,discussion_perspectives,insert,-,document_id + label + body + author_id + display_order (배치),관점 문서 퍼스펙티브 일괄 삽입
+10,app/wiki/[slug]/page.tsx,WikiPage - loadDoc(),GET,documents,select,.eq('slug' slug) .single(),* + profiles(nickname) + kakao_meta(talk_date participants),문서 상세 로드
+11,app/wiki/[slug]/page.tsx,WikiPage - loadDoc(),GET,discussion_perspectives,select,.eq('document_id' id) .order(display_order asc),* + profiles(nickname),관점 문서 퍼스펙티브 로드
+12,app/wiki/[slug]/page.tsx,WikiPage - handleDelete(),DELETE,documents,delete,.eq('id' doc.id),-,문서 삭제 (본인만)
+13,app/wiki/[slug]/edit/page.tsx,EditDocPage - useEffect,GET,documents,select,.eq('slug' slug) .single(),* + kakao_meta(talk_date),수정용 문서 로드
+14,app/wiki/[slug]/edit/page.tsx,EditDocPage - handleSave(),PATCH,documents,update,.eq('id' docId),title + body + tags + updated_at,문서 내용 저장
+15,app/wiki/[slug]/edit/page.tsx,EditDocPage - handleSave(),PATCH,kakao_meta,upsert,onConflict: 'document_id',document_id + talk_date,카카오 메타 upsert
+16,app/wiki/[slug]/edit/page.tsx,EditDocPage - handleSave(),POST,document_versions,insert,-,document_id + body + edited_by,편집 버전 이력 저장
+17,app/discussions/page.tsx,DiscussionsPage - loadDiscussions(),GET,discussions,select,.eq('status' filter) (조건부) .order(created_at desc),* + profiles(nickname) + discussion_participants(user_id),토론 목록 (상태별 필터)
+18,app/discussions/new/page.tsx,NewDiscussionPage - handleSubmit(),POST,discussions,insert,-,title + body + format + status + author_id + tags + end_at + started_at,신규 토론 생성 (end_at = +24h)
+19,app/discussions/new/page.tsx,NewDiscussionPage - handleSubmit(),POST,discussion_participants,insert,-,discussion_id + user_id + stance('발제자'),발제자 자동 참가 등록
+20,app/discussions/[id]/page.tsx,DiscussionPage - useEffect,GET,profiles,select,.eq('id' userId) .single(),nickname + is_admin,현재 유저 프로필 및 관리자 여부 확인
+21,app/discussions/[id]/page.tsx,DiscussionPage - useEffect,GET,debate_agrees,select,.eq('user_id' userId),post_id,현재 유저의 동의 게시물 목록 로드
+22,app/discussions/[id]/page.tsx,DiscussionPage - Realtime,SUBSCRIBE,debate_posts,realtime INSERT,discussion_id=eq.{id},* + profiles(nickname),토론 게시물 실시간 수신
+23,app/discussions/[id]/page.tsx,DiscussionPage - Realtime,SUBSCRIBE,discussion_participants,realtime INSERT,discussion_id=eq.{id},-,참가자 변경 실시간 감지
+24,app/discussions/[id]/page.tsx,DiscussionPage - loadDiscussion(),GET,discussions,select,.eq('id' id) .single(),* + profiles(nickname) + discussion_participants(* + profiles(nickname)),토론 상세 전체 로드
+25,app/discussions/[id]/page.tsx,DiscussionPage - loadPosts(),GET,debate_posts,select,.eq('discussion_id' id) .order(created_at asc),* + profiles(nickname),토론 게시물 전체 로드 (시간순)
+26,app/discussions/[id]/page.tsx,DiscussionPage - loadExtRequests(),GET,extension_requests,select,.eq('discussion_id' id),* + profiles(nickname),연장 요청 목록 로드
+27,app/discussions/[id]/page.tsx,DiscussionPage - joinDiscussion(),POST,discussion_participants,insert,-,discussion_id + user_id + stance,토론 참가 (입장 등록)
+28,app/discussions/[id]/page.tsx,DiscussionPage - joinDiscussion(),POST,notifications,insert,-,user_id + type + message + discussion_id,발제자에게 참가 알림 발송
+29,app/discussions/[id]/page.tsx,DiscussionPage - submitPost(),POST,debate_posts,insert,-,discussion_id + parent_id + post_type + content + author_id + stance,게시물 제출 (논거/반론/질문)
+30,app/discussions/[id]/page.tsx,DiscussionPage - toggleAgree() 취소,DELETE,debate_agrees,delete,.eq('post_id' postId) .eq('user_id' userId),-,게시물 동의 취소
+31,app/discussions/[id]/page.tsx,DiscussionPage - toggleAgree() 추가,POST,debate_agrees,insert,-,post_id + user_id,게시물 동의 추가
+32,app/discussions/[id]/page.tsx,DiscussionPage - adminSetStatus(),PATCH,discussions,update,.eq('id' id),status,관리자 상태 변경 (active/paused/ended)
+33,app/discussions/[id]/page.tsx,DiscussionPage - adminExtend() 연장,PATCH,discussions,update,.eq('id' id),status + end_at,관리자 토론 시간 연장 (24/48/72h)
+34,app/discussions/[id]/page.tsx,DiscussionPage - adminExtend() 연장요청 삭제,DELETE,extension_requests,delete,.eq('discussion_id' id),-,연장 승인 후 연장요청 전체 삭제
+35,app/discussions/[id]/page.tsx,DiscussionPage - adminExtend() 알림,POST,notifications,insert,-,user_id + type + message + discussion_id (배치),모든 참가자에게 연장 알림 발송
+36,app/discussions/[id]/page.tsx,DiscussionPage - saveNotice(),PATCH,discussions,update,.eq('id' id),notice,관리자 공지 저장/삭제
+37,app/discussions/[id]/page.tsx,DiscussionPage - toggleExtRequest() 취소,DELETE,extension_requests,delete,.eq('discussion_id' id) .eq('user_id' userId),-,유저 연장 요청 취소
+38,app/discussions/[id]/page.tsx,DiscussionPage - toggleExtRequest() 추가,POST,extension_requests,insert,-,discussion_id + user_id + stance,유저 연장 요청 등록
+39,app/discussions/[id]/edit/page.tsx,EditDiscussionPage - useEffect,GET,discussions,select,.eq('id' id) .single(),*,수정용 토론 로드
+40,app/discussions/[id]/edit/page.tsx,EditDiscussionPage - autoSave() / handleSave(),PATCH,discussions,update,.eq('id' id),title + body + format + tags + end_at(조건부),토론 수정 저장 (자동저장 3초 디바운스 + 수동 저장)
+41,components/Comments.tsx,Comments - loadComments(),GET,comments,select,.eq('document_id' documentId) .order(created_at asc),* + profiles(nickname),문서 댓글 전체 로드
+42,components/Comments.tsx,Comments - addComment(),POST,comments,insert,-,document_id + parent_id + content + author_id,댓글/대댓글 작성
+43,components/Comments.tsx,Comments - deleteComment(),DELETE,comments,delete,.eq('id' id),-,댓글 삭제 (본인만)
+44,components/Comments.tsx,Comments - updateComment(),PATCH,comments,update,.eq('id' id),content + updated_at,댓글 내용 수정
+45,components/LikeButton.tsx,LikeButton - useEffect,GET,likes,select,.eq('document_id' documentId) .eq('user_id' userId) .maybeSingle(),user_id,현재 유저 좋아요 여부 확인
+46,components/LikeButton.tsx,LikeButton - toggleLike() 취소,DELETE,likes,delete,.eq('document_id' documentId) .eq('user_id' userId),-,좋아요 취소
+47,components/LikeButton.tsx,LikeButton - toggleLike() 추가,POST,likes,insert,-,document_id + user_id,좋아요 추가
+48,components/Navbar.tsx,Navbar - Realtime,SUBSCRIBE,notifications,realtime INSERT,user_id=eq.{userId},-,실시간 알림 수신
+49,components/Navbar.tsx,Navbar - markRead(),PATCH,notifications,update,.eq('user_id' userId),is_read(true),알림 전체 읽음 처리

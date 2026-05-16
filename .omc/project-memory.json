@@ -1,0 +1,234 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1778951070088,
+  "projectRoot": "C:\\Users\\shrim\\git\\n-wiki",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "next",
+        "version": "14.2.35",
+        "category": "fullstack"
+      },
+      {
+        "name": "react",
+        "version": "18",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "18",
+        "category": "frontend"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": null,
+    "lintCommand": "npm run lint",
+    "devCommand": "npm run dev",
+    "scripts": {
+      "dev": "next dev",
+      "build": "next build",
+      "start": "next start",
+      "lint": "next lint"
+    }
+  },
+  "conventions": {
+    "namingStyle": "camelCase",
+    "importStyle": "ES modules",
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "app",
+      "components",
+      "docs",
+      "lib"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "app": {
+      "path": "app",
+      "purpose": "Application code",
+      "fileCount": 4,
+      "lastAccessed": 1778951069991,
+      "keyFiles": [
+        "favicon.ico",
+        "globals.css",
+        "layout.tsx",
+        "page.tsx"
+      ]
+    },
+    "components": {
+      "path": "components",
+      "purpose": "UI components",
+      "fileCount": 4,
+      "lastAccessed": 1778951070011,
+      "keyFiles": [
+        "Comments.tsx",
+        "LikeButton.tsx",
+        "Navbar.tsx",
+        "QuillEditor.tsx"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 2,
+      "lastAccessed": 1778951070012,
+      "keyFiles": [
+        "api-spec.csv",
+        "architecture.md"
+      ]
+    },
+    "lib": {
+      "path": "lib",
+      "purpose": "Library code",
+      "fileCount": 2,
+      "lastAccessed": 1778951070013,
+      "keyFiles": [
+        "supabase-server.ts",
+        "supabase.ts"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "components\\Sidebar.tsx",
+      "accessCount": 5,
+      "lastAccessed": 1778957656807,
+      "type": "file"
+    },
+    {
+      "path": "app\\page.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1778957616186,
+      "type": "file"
+    },
+    {
+      "path": "app\\layout.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1778955745453,
+      "type": "file"
+    },
+    {
+      "path": "app\\globals.css",
+      "accessCount": 2,
+      "lastAccessed": 1778955800932,
+      "type": "file"
+    },
+    {
+      "path": "new-components\\AppHeader.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1778955620183,
+      "type": "file"
+    },
+    {
+      "path": "new-components\\BottomNav.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1778955621752,
+      "type": "file"
+    },
+    {
+      "path": "new-components\\Sidebar.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1778955622352,
+      "type": "file"
+    },
+    {
+      "path": "new-components\\layout.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1778955622473,
+      "type": "file"
+    },
+    {
+      "path": "new-components\\page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1778955622743,
+      "type": "file"
+    },
+    {
+      "path": "new-components\\globals.css",
+      "accessCount": 1,
+      "lastAccessed": 1778955623847,
+      "type": "file"
+    },
+    {
+      "path": "components\\Navbar.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1778955626664,
+      "type": "file"
+    },
+    {
+      "path": "components\\AppHeader.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1778955675787,
+      "type": "file"
+    },
+    {
+      "path": "components\\BottomNav.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1778955696140,
+      "type": "file"
+    },
+    {
+      "path": "lib\\supabase.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778957413277,
+      "type": "file"
+    },
+    {
+      "path": "components\\LikeButton.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1778957427399,
+      "type": "file"
+    },
+    {
+      "path": "docs",
+      "accessCount": 1,
+      "lastAccessed": 1778957428624,
+      "type": "directory"
+    },
+    {
+      "path": "app\\wiki\\page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1778957683599,
+      "type": "file"
+    },
+    {
+      "path": "app\\saved\\page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1778957710460,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}
