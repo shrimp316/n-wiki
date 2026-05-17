@@ -28,6 +28,12 @@ const TAB_TITLES: Record<TabType, string> = {
   procon: '찬반의견',
 }
 
+type Stats = {
+  kakao: { total: number; today: number }
+  procon: { total: number; today: number }
+  wiki:  { total: number; today: number }
+}
+
 function HomeView() {
   const supabase = createClient()
   const params = useSearchParams()
@@ -38,16 +44,43 @@ function HomeView() {
   const [discussions, setDiscussions] = useState<DiscussionWithCount[]>([])
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
+  const [stats, setStats] = useState<Stats | null>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id || null))
   }, [])
 
   useEffect(() => {
-    if (tab === 'home') loadHome()
+    if (tab === 'home') { loadHome(); loadStats() }
     else if (tab === 'discussion') loadKakaoDocs()
     else if (tab === 'procon') loadProcons()
   }, [tab])
+
+  async function loadStats() {
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const todayIso = todayStart.toISOString()
+
+    const [kTotal, kToday, pTotal, pToday, wTotal, wToday] = await Promise.all([
+      supabase.from('documents').select('*', { count: 'exact', head: true })
+        .eq('type', 'kakao').eq('status', 'published'),
+      supabase.from('documents').select('*', { count: 'exact', head: true })
+        .eq('type', 'kakao').eq('status', 'published').gte('created_at', todayIso),
+      supabase.from('discussions').select('*', { count: 'exact', head: true })
+        .eq('format', 'pros_cons'),
+      supabase.from('discussions').select('*', { count: 'exact', head: true })
+        .eq('format', 'pros_cons').gte('created_at', todayIso),
+      supabase.from('documents').select('*', { count: 'exact', head: true })
+        .eq('type', 'concept').eq('status', 'published'),
+      supabase.from('documents').select('*', { count: 'exact', head: true })
+        .eq('type', 'concept').eq('status', 'published').gte('created_at', todayIso),
+    ])
+    setStats({
+      kakao:  { total: kTotal.count ?? 0, today: kToday.count ?? 0 },
+      procon: { total: pTotal.count ?? 0, today: pToday.count ?? 0 },
+      wiki:   { total: wTotal.count ?? 0, today: wToday.count ?? 0 },
+    })
+  }
 
   async function loadHome() {
     setLoading(true)
@@ -127,6 +160,34 @@ function HomeView() {
         {/* ── 홈: 대시보드 ── */}
         {tab === 'home' && (
           <>
+            {/* 통계 카드 (3개 카테고리 총수 + 오늘 변동) */}
+            <div style={statsGrid}>
+              <StatCard
+                label="전체담론"
+                sub="카카오톡 담론요약"
+                total={stats?.kakao.total}
+                today={stats?.kakao.today}
+                color="#41b0f8"
+                onClick={() => setTab('discussion')}
+              />
+              <StatCard
+                label="찬반의견"
+                sub="찬반 토론"
+                total={stats?.procon.total}
+                today={stats?.procon.today}
+                color="#ff7a59"
+                onClick={() => setTab('procon')}
+              />
+              <StatCard
+                label="위키문서"
+                sub="개념 문서"
+                total={stats?.wiki.total}
+                today={stats?.wiki.today}
+                color="#3dd9b0"
+                href="/wiki"
+              />
+            </div>
+
             {/* 카카오톡 담론요약 미리보기 */}
             <div style={sectionHeader}>
               <span style={sectionTitle}>최근 카카오톡 담론요약</span>
@@ -291,6 +352,73 @@ export default function HomePage() {
   )
 }
 
+function StatCard({
+  label, sub, total, today, color, onClick, href,
+}: {
+  label: string
+  sub: string
+  total: number | undefined
+  today: number | undefined
+  color: string
+  onClick?: () => void
+  href?: string
+}) {
+  const inner = (
+    <div style={{
+      ...glassCard,
+      padding: '12px 10px',
+      cursor: 'pointer',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '6px',
+      minWidth: 0,
+      borderTop: `3px solid ${color}`,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: '#0d1f3c', letterSpacing: '-0.3px' }}>
+          {label}
+        </span>
+      </div>
+      <div style={{ fontSize: '10px', color: '#8faec8', marginTop: '-4px' }}>{sub}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: 'auto' }}>
+        <span style={{ fontSize: '22px', fontWeight: 700, color: '#0d1f3c', lineHeight: 1 }}>
+          {total ?? '—'}
+        </span>
+        {typeof today === 'number' && today > 0 && (
+          <span style={{
+            fontSize: '11px', fontWeight: 600, color: '#10b981',
+            background: 'rgba(16,185,129,0.12)',
+            padding: '2px 6px', borderRadius: '8px',
+          }}>
+            +{today} 오늘
+          </span>
+        )}
+        {typeof today === 'number' && today === 0 && (
+          <span style={{ fontSize: '11px', color: '#8faec8' }}>오늘 0</span>
+        )}
+      </div>
+    </div>
+  )
+
+  if (href) {
+    return <Link href={href} style={{ textDecoration: 'none', minWidth: 0 }}>{inner}</Link>
+  }
+  return (
+    <button
+      onClick={onClick}
+      style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontFamily: 'inherit', minWidth: 0 }}
+    >
+      {inner}
+    </button>
+  )
+}
+
+const statsGrid: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gap: '8px',
+  marginBottom: '20px',
+}
 const sectionHeader: React.CSSProperties = {
   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
   marginBottom: '12px', marginTop: '4px',
