@@ -304,3 +304,194 @@ notifications
 - **실시간**: Supabase 채널 구독 → 이벤트 수신 시 로컬 state 업데이트
 - **자동저장**: `discussions/[id]/edit` — title/body/tags 변경 시 3초 디바운스 후 DB 저장
 - **위키링크**: `[[slug]]` 패턴 → 뷰 렌더링 시 정규식으로 `<a>` 태그 변환
+
+---
+
+## 10. 오픈채팅 봇 시스템 (2026-05-17 추가)
+
+> 카카오톡 오픈채팅방과 n-wiki 사이트를 양방향으로 연결하는 봇 서브시스템
+
+### 10-1. 전체 구조
+
+```
+카카오톡 채팅방
+     │ 알림 (Notification)
+     ▼
+┌─────────────────────────────────────────────┐
+│  Android 공기계 (메신저봇R / Rhino JS ES5)    │
+│                                             │
+│  response() 콜백                            │
+│    ├─ 일반 채팅   → POST /api/bot/ingest    │
+│    └─ 명령어 감지 → POST /api/bot/command   │
+│                                             │
+│  Java Thread 데몬 (5분 간격)                 │
+│    └─ GET  /api/bot/outbox                  │
+│    └─ Api.replyRoom(room, message)          │
+│    └─ POST /api/bot/outbox/ack              │
+└──────────────────────┬──────────────────────┘
+                       │ HTTPS
+                       ▼
+┌─────────────────────────────────────────────┐
+│  Vercel (Next.js App Router)                │
+│                                             │
+│  봇 API (X-Bot-Secret 인증)                  │
+│  ├─ POST /api/bot/ingest                    │
+│  ├─ GET  /api/bot/outbox                    │
+│  ├─ POST /api/bot/outbox/ack                │
+│  └─ POST /api/bot/command                   │
+│                                             │
+│  크론 API (Authorization: Bearer 인증)       │
+│  ├─ GET /api/cron/summarize    KST 23:59    │
+│  ├─ GET /api/cron/summarize-now  명령어 즉시 │
+│  └─ GET /api/cron/top5         KST 09:00   │
+│                                             │
+│  공통 유틸                                   │
+│  ├─ lib/supabase-admin.ts  Service Role     │
+│  └─ lib/bot-auth.ts        시크릿 검증       │
+└──────────────────────┬──────────────────────┘
+                       │
+           ┌───────────┴───────────┐
+           ▼                       ▼
+┌─────────────────┐    ┌──────────────────────┐
+│  Supabase (DB)  │    │  Anthropic Claude API │
+│                 │    │  모델: Haiku           │
+│  chat_logs      │    └──────────────────────┘
+│  chat_log_meta  │
+│  outbox         │
+│  bot_state      │
+│  documents ─────│── 기존 테이블 (요약 결과)
+│  kakao_meta ────│── 기존 테이블
+└─────────────────┘
+```
+
+### 10-2. 신규 DB 테이블 (001_bot_tables.sql)
+
+```
+chat_logs
+  id          BIGSERIAL PK
+  log_date    DATE          -- KST 기준 날짜 (UTC+9)
+  sender      TEXT
+  text        TEXT
+  created_at  TIMESTAMPTZ
+
+chat_log_meta
+  log_date        DATE PK
+  message_count   INT DEFAULT 0
+  summarized      BOOLEAN DEFAULT FALSE
+  summary_doc_id  UUID → documents
+
+outbox
+  id           BIGSERIAL PK
+  type         TEXT          -- 'top5' | 'new-post-alert' | 'command-reply'
+  room         TEXT
+  message      TEXT
+  status       ENUM          -- pending | in_flight | sent | failed
+  attempts     INT DEFAULT 0
+  dedup_key    TEXT UNIQUE
+  leased_until TIMESTAMPTZ
+  created_at   TIMESTAMPTZ
+  sent_at      TIMESTAMPTZ
+
+bot_state
+  key    TEXT PK
+  value  JSONB
+```
+
+### 10-3. 기능별 데이터 흐름
+
+#### 채팅 수집 (상시)
+```
+메신저봇R response()
+  → POST /api/bot/ingest
+  → KST 날짜 계산
+  → chat_logs INSERT
+  → increment_chat_log_meta() RPC (원자적 카운터 +1)
+```
+
+#### 일일 자동 요약 (KST 23:59)
+```
+Vercel Cron → /api/cron/summarize
+  → chat_log_meta.summarized 체크 (멱등성)
+  → chat_logs 5건 미만이면 skip
+  → Claude Haiku API 호출
+  → documents INSERT { type: 'kakao', slug: '카카오-담론-YYYY-MM-DD' }
+  → kakao_meta INSERT
+  → chat_log_meta UPDATE { summarized: true }
+```
+
+#### 명령어 즉시 요약 ("요약해줘")
+```
+채팅방 메시지 → isCommandMessage() = true
+  → POST /api/bot/command
+  → /api/cron/summarize-now 내부 호출
+  → Claude Haiku API 호출 (오늘 자정~현재, 최소 3건)
+  → documents INSERT { slug: '카카오-담론-YYYY-MM-DD-중간요약' }
+  → outbox INSERT { type: 'command-reply' }  ← 봇이 채팅방에 결과 전송
+```
+
+#### 새 글 알림 (실시간)
+```
+documents INSERT/UPDATE (status → 'published')
+  → [Supabase] on_new_document 트리거
+  → type='kakao' 이면 skip (무한루프 방지)
+  → outbox INSERT { type: 'new-post-alert', dedup_key: 'doc:uuid' }
+```
+
+#### Top5 공유 (KST 09:00)
+```
+Vercel Cron → /api/cron/top5
+  → documents ORDER BY like_count DESC LIMIT 5
+  → outbox INSERT { type: 'top5', dedup_key: 'top5:YYYY-MM-DD' }
+```
+
+#### Outbox 전송 (5분마다)
+```
+봇 폴러 → GET /api/bot/outbox
+  → claim_outbox() RPC (FOR UPDATE SKIP LOCKED, 2분 임대)
+  → Api.replyRoom(room, message)
+  → POST /api/bot/outbox/ack { id, status: 'sent'|'failed' }
+```
+
+### 10-4. 보안
+
+| 항목 | 방식 |
+|------|------|
+| 봇↔서버 인증 | `X-Bot-Secret` 헤더 + `timingSafeEqual` |
+| 크론 인증 | `Authorization: Bearer {CRON_SECRET}` |
+| DB 접근 | Service Role Key (RLS 우회, 서버 전용) |
+| XSS 방지 | AI 출력에서 script/iframe/on\* 태그 제거 |
+| 프롬프트 인젝션 완화 | XML 태그 이스케이프 |
+| 무한루프 방지 | `type='kakao'` 트리거 skip |
+
+### 10-5. 데이터 수명 (로테이션 정책)
+
+| 테이블 | 보관 기간 | 이유 |
+|--------|---------|------|
+| `chat_logs` | 14일 후 삭제 | 요약 후 개인정보 파기 |
+| `outbox` (sent) | 30일 후 삭제 | 전송 완료 레코드 정리 |
+| `outbox` (failed) | 수동 관리 | `UPDATE SET status='pending'`으로 재시도 |
+| `chat_log_meta` | 영구 | 날짜별 요약 상태 |
+| `documents` | 영구 | 위키 콘텐츠 |
+
+### 10-6. 추가된 파일 목록
+
+```
+n-wiki/
+├── lib/
+│   ├── supabase-admin.ts       Service Role 클라이언트
+│   └── bot-auth.ts             X-Bot-Secret / Bearer 검증
+├── app/api/
+│   ├── bot/
+│   │   ├── ingest/route.ts     채팅 수집
+│   │   ├── outbox/route.ts     전송 큐 폴링
+│   │   ├── outbox/ack/route.ts 전송 완료 보고
+│   │   └── command/route.ts    명령어 처리 (신규)
+│   └── cron/
+│       ├── summarize/route.ts      일일 자동 요약
+│       ├── summarize-now/route.ts  즉시 요약 (신규)
+│       └── top5/route.ts           Top5 공유
+├── bot-script/
+│   └── main.js                 봇 스크립트 (명령어 감지 포함)
+├── vercel.json                 크론 스케줄 등록
+└── docs/
+    └── TASKS.md                남은 작업 목록
