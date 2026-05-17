@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"ls C:\\\\Users\\\\shrim\\\\git\\\\n-wiki\",\"description\":\"List project root\"}",
+  "error": "Exit code 2\nls: cannot access 'C:Usersshrimgitn-wiki': No such file or directory",
+  "timestamp": "2026-05-17T05:18:09.837Z",
+  "retry_count": 1
+}

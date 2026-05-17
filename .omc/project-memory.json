@@ -122,15 +122,15 @@
   },
   "hotPaths": [
     {
-      "path": "components\\Sidebar.tsx",
-      "accessCount": 5,
-      "lastAccessed": 1778957656807,
+      "path": "app\\page.tsx",
+      "accessCount": 10,
+      "lastAccessed": 1778994029946,
       "type": "file"
     },
     {
-      "path": "app\\page.tsx",
-      "accessCount": 3,
-      "lastAccessed": 1778957616186,
+      "path": "components\\Sidebar.tsx",
+      "accessCount": 8,
+      "lastAccessed": 1778994031512,
       "type": "file"
     },
     {
@@ -146,39 +146,57 @@
       "type": "file"
     },
     {
-      "path": "new-components\\AppHeader.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1778955620183,
-      "type": "file"
-    },
-    {
-      "path": "new-components\\BottomNav.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1778955621752,
+      "path": "new-components\\page.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1778993625186,
       "type": "file"
     },
     {
       "path": "new-components\\Sidebar.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1778955622352,
+      "accessCount": 2,
+      "lastAccessed": 1778993625828,
       "type": "file"
     },
     {
-      "path": "new-components\\layout.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1778955622473,
+      "path": "new-components\\AppHeader.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1778993626796,
       "type": "file"
     },
     {
-      "path": "new-components\\page.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1778955622743,
+      "path": "new-components\\BottomNav.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1778993627660,
       "type": "file"
     },
     {
       "path": "new-components\\globals.css",
-      "accessCount": 1,
-      "lastAccessed": 1778955623847,
+      "accessCount": 2,
+      "lastAccessed": 1778993627883,
+      "type": "file"
+    },
+    {
+      "path": "new-components\\layout.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1778993628461,
+      "type": "file"
+    },
+    {
+      "path": "lib\\supabase.ts",
+      "accessCount": 2,
+      "lastAccessed": 1778993640008,
+      "type": "file"
+    },
+    {
+      "path": "supabase-rls-fix.sql",
+      "accessCount": 2,
+      "lastAccessed": 1778995271167,
+      "type": "file"
+    },
+    {
+      "path": "supabase-cleanup.sql",
+      "accessCount": 2,
+      "lastAccessed": 1778996229633,
       "type": "file"
     },
     {
@@ -197,12 +215,6 @@
       "path": "components\\BottomNav.tsx",
       "accessCount": 1,
       "lastAccessed": 1778955696140,
-      "type": "file"
-    },
-    {
-      "path": "lib\\supabase.ts",
-      "accessCount": 1,
-      "lastAccessed": 1778957413277,
       "type": "file"
     },
     {
@@ -227,6 +239,36 @@
       "path": "app\\saved\\page.tsx",
       "accessCount": 1,
       "lastAccessed": 1778957710460,
+      "type": "file"
+    },
+    {
+      "path": "new-components\\README.md",
+      "accessCount": 1,
+      "lastAccessed": 1778993618069,
+      "type": "file"
+    },
+    {
+      "path": "supabase-schema.sql",
+      "accessCount": 1,
+      "lastAccessed": 1778995097673,
+      "type": "file"
+    },
+    {
+      "path": "supabase-discussions.sql",
+      "accessCount": 1,
+      "lastAccessed": 1778995098225,
+      "type": "file"
+    },
+    {
+      "path": "supabase-admin.sql",
+      "accessCount": 1,
+      "lastAccessed": 1778995099349,
+      "type": "file"
+    },
+    {
+      "path": "supabase-discussions-v2.sql",
+      "accessCount": 1,
+      "lastAccessed": 1778995099704,
       "type": "file"
     }
   ],
