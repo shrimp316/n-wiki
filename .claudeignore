@@ -1,0 +1,9 @@
+# 환경 설정
+.env
+.env.local
+.env.production
+
+# 보안 관련
+*.key
+*.pem
+*.p12
