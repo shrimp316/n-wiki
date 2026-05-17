@@ -63,7 +63,8 @@ export default function HomePage() {
       .then(({ data }) => {
         if (data) {
           const vm: Record<string, string> = {}
-          data.forEach((p: any) => { vm[p.discussion_id] = p.stance })
+          ;(data as { discussion_id: string; stance: string }[])
+            .forEach(p => { vm[p.discussion_id] = p.stance })
           setMyVotes(vm)
         }
       })
@@ -82,18 +83,26 @@ export default function HomePage() {
 
   async function loadDiscussions(format: string | null) {
     setLoading(true)
-    let query = supabase
+    const base = supabase
       .from('discussions')
       .select('*, profiles!discussions_author_id_fkey(nickname), discussion_participants(user_id, stance)')
       .order('created_at', { ascending: false })
-    if (format) query = (query as any).eq('format', format)
+    const query = format ? base.eq('format', format) : base
     const { data } = await query
-    const mapped = (data || []).map((d: any) => ({
-      ...d,
-      participant_count: (d.discussion_participants || []).length,
-      pros_count: (d.discussion_participants || []).filter((p: any) => p.stance === '찬성').length,
-      cons_count: (d.discussion_participants || []).filter((p: any) => p.stance === '반대').length,
-    })) as DiscussionWithCount[]
+    type DiscussionRow = Discussion & {
+      profiles?: { nickname: string }
+      discussion_participants?: { user_id: string; stance: string }[]
+    }
+    const rows = (data ?? []) as DiscussionRow[]
+    const mapped: DiscussionWithCount[] = rows.map(d => {
+      const parts = d.discussion_participants ?? []
+      return {
+        ...d,
+        participant_count: parts.length,
+        pros_count: parts.filter(p => p.stance === '찬성').length,
+        cons_count: parts.filter(p => p.stance === '반대').length,
+      }
+    })
     setDiscussions(mapped)
     setLoading(false)
   }

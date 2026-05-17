@@ -1,7 +1,5 @@
 'use client'
 
-import Link from 'next/link'
-
 export type TabType = 'home' | 'discussion' | 'procon'
 
 interface BottomNavProps {
