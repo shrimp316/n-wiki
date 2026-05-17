@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { TabType } from './BottomNav'
+import type { TabType } from '../components/BottomNav'
 
 interface SidebarProps {
   isOpen: boolean
@@ -13,28 +13,16 @@ interface SidebarProps {
   onTabChange: (tab: TabType) => void
 }
 
-type SubItem = { id: string; title: string; href: string }
-type Category = 'kakao' | 'procon' | 'wiki'
-
-type ExpandableItem = {
-  id: string
-  icon: string
-  label: string
-  tabId?: TabType
-  href?: string
-  category: Category
-}
-
-const HOME_ITEM = { id: 'home' as TabType, icon: 'home', label: '메인홈 · 대시보드', href: '/' }
-
-const EXPANDABLES: ExpandableItem[] = [
-  { id: 'discussion', icon: 'chat',  label: '담론',     tabId: 'discussion', category: 'kakao' },
-  { id: 'procon',     icon: 'scale', label: '찬반의견', tabId: 'procon',     category: 'procon' },
-  { id: 'wiki',       icon: 'wiki',  label: '위키문서', href: '/wiki',       category: 'wiki' },
+const NAV_ITEMS = [
+  { id: 'home' as TabType,       icon: 'home',     label: '메인홈 · 대시보드', href: '/' },
+  { id: 'discussion' as TabType, icon: 'chat',     label: '담론',             href: '/discussions' },
+  { id: 'procon' as TabType,     icon: 'scale',    label: '찬반의견',          href: '/discussions?format=pros_cons' },
 ]
 
 const EXTRA_ITEMS = [
+  { icon: 'wiki',     label: '위키 문서',   href: '/wiki' },
   { icon: 'bookmark', label: '저장한 항목', href: '/saved' },
+  { icon: 'person',   label: '마이페이지',  href: '/profile' },
 ]
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -94,12 +82,6 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M9 18l6-6-6-6" />
     </svg>
   ),
-  chevronDown: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  ),
 }
 
 export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }: SidebarProps) {
@@ -107,43 +89,15 @@ export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }: Sid
   const router = useRouter()
   const [nickname, setNickname] = useState<string | null>(null)
   const [email, setEmail] = useState<string | null>(null)
-  const [authed, setAuthed] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
-
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const [subItems, setSubItems] = useState<Record<string, SubItem[] | 'loading'>>({})
-
-  // 모바일 감지
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const mql = window.matchMedia('(max-width: 640px)')
-    const update = () => setIsMobile(mql.matches)
-    update()
-    mql.addEventListener('change', update)
-    return () => mql.removeEventListener('change', update)
-  }, [])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
-        setAuthed(true)
         setEmail(data.user.email ?? null)
         supabase.from('profiles').select('nickname').eq('id', data.user.id).single()
           .then(({ data: p }) => { if (p) setNickname(p.nickname) })
-      } else {
-        setAuthed(false)
-        setNickname(null)
-        setEmail(null)
       }
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      if (!session) {
-        setAuthed(false); setNickname(null); setEmail(null)
-      } else {
-        setAuthed(true); setEmail(session.user.email ?? null)
-      }
-    })
-    return () => subscription.unsubscribe()
   }, [])
 
   // 열릴 때 body 스크롤 잠금
@@ -152,64 +106,12 @@ export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }: Sid
     return () => { document.body.style.overflow = '' }
   }, [isOpen])
 
-  async function fetchSubItems(category: Category): Promise<SubItem[]> {
-    if (category === 'procon') {
-      const { data } = await supabase
-        .from('discussions')
-        .select('id, title')
-        .eq('format', 'pros_cons')
-        .order('created_at', { ascending: false })
-        .limit(8)
-      return (data || []).map(d => ({
-        id: d.id,
-        title: d.title,
-        href: `/discussions/${d.id}`,
-      }))
-    }
-    const type = category === 'kakao' ? 'kakao' : 'concept'
-    const { data } = await supabase
-      .from('documents')
-      .select('id, slug, title')
-      .eq('type', type)
-      .eq('status', 'published')
-      .order('created_at', { ascending: false })
-      .limit(8)
-    return (data || []).map(d => ({
-      id: d.id,
-      title: d.title,
-      href: `/wiki/${d.slug}`,
-    }))
-  }
-
-  async function toggleExpand(item: ExpandableItem) {
-    const willOpen = !expanded[item.id]
-    setExpanded(s => ({ ...s, [item.id]: willOpen }))
-    if (willOpen && !subItems[item.id]) {
-      setSubItems(s => ({ ...s, [item.id]: 'loading' }))
-      const items = await fetchSubItems(item.category)
-      setSubItems(s => ({ ...s, [item.id]: items }))
-    }
-  }
-
-  function handlePrimaryClick(item: ExpandableItem) {
-    if (item.tabId) {
-      onTabChange(item.tabId)
-      onClose()
-    } else if (item.href) {
-      router.push(item.href)
-      onClose()
-    }
-  }
-
   async function handleLogout() {
     await supabase.auth.signOut()
     onClose()
     router.push('/')
     router.refresh()
   }
-
-  const drawerWidth = isMobile ? '100%' : '78%'
-  const drawerMaxWidth = isMobile ? '100%' : '320px'
 
   return (
     <>
@@ -234,8 +136,8 @@ export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }: Sid
           position: 'fixed',
           top: 0, left: 0, bottom: 0,
           zIndex: 201,
-          width: drawerWidth,
-          maxWidth: drawerMaxWidth,
+          width: '78%',
+          maxWidth: '300px',
           background: 'rgba(240,249,255,0.98)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
@@ -281,206 +183,66 @@ export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }: Sid
           </div>
 
           <div style={{ fontSize: '15px', fontWeight: 600, color: '#fff', letterSpacing: '-0.3px' }}>
-            {authed ? (nickname ?? 'N의 위키 사용자') : '게스트'}
+            {nickname ?? 'N의 위키 사용자'}
           </div>
-          <div style={{
-            fontSize: '12px', color: 'rgba(255,255,255,0.75)', marginTop: '2px',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {authed ? (email ?? '') : '로그인이 필요해요'}
+          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', marginTop: '2px' }}>
+            {email ?? '로그인이 필요해요'}
           </div>
-
-          {!authed && (
-            <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
-              <Link
-                href="/auth/login"
-                onClick={onClose}
-                style={{
-                  flex: 1,
-                  fontSize: '12px', fontWeight: 600,
-                  color: '#1a8cf5',
-                  background: 'rgba(255,255,255,0.95)',
-                  textAlign: 'center',
-                  textDecoration: 'none',
-                  padding: '8px 0',
-                  borderRadius: '10px',
-                }}
-              >
-                로그인
-              </Link>
-              <Link
-                href="/auth/signup"
-                onClick={onClose}
-                style={{
-                  flex: 1,
-                  fontSize: '12px', fontWeight: 600,
-                  color: '#fff',
-                  background: 'rgba(255,255,255,0.22)',
-                  border: '1px solid rgba(255,255,255,0.5)',
-                  textAlign: 'center',
-                  textDecoration: 'none',
-                  padding: '8px 0',
-                  borderRadius: '10px',
-                }}
-              >
-                회원가입
-              </Link>
-            </div>
-          )}
         </div>
 
-        {/* 메뉴 영역 (스크롤) */}
-        <nav style={{ flex: 1, overflowY: 'auto', paddingTop: '8px', paddingBottom: '8px' }}>
-          {/* 메인홈 */}
-          <button
-            onClick={() => { onTabChange('home'); onClose() }}
-            style={{
-              ...rowBase,
-              background: activeTab === 'home' ? 'rgba(26,140,245,0.08)' : 'transparent',
-              borderLeft: activeTab === 'home' ? '3px solid #1a8cf5' : '3px solid transparent',
-              color: activeTab === 'home' ? '#1a8cf5' : '#0d1f3c',
-            }}
-          >
-            <div style={{
-              ...iconBox,
-              background: activeTab === 'home'
-                ? 'linear-gradient(135deg, #41b0f8, #3dd9b0)'
-                : 'rgba(100,150,200,0.12)',
-              color: activeTab === 'home' ? '#fff' : '#5a7a9a',
-            }}>
-              {ICONS.home}
-            </div>
-            <span style={{
-              ...labelStyle,
-              fontWeight: activeTab === 'home' ? 600 : 400,
-            }}>
-              {HOME_ITEM.label}
-            </span>
-          </button>
-
-          {/* 아코디언 항목들 */}
-          {EXPANDABLES.map(item => {
-            const isOpenAcc = !!expanded[item.id]
-            const isActiveTab = item.tabId && activeTab === item.tabId
-            const sub = subItems[item.id]
+        {/* 주요 메뉴 */}
+        <nav style={{ paddingTop: '8px', flexShrink: 0 }}>
+          {NAV_ITEMS.map(item => {
+            const active = activeTab === item.id
             return (
-              <div key={item.id}>
-                {/* 메인 행: 좌측 아이콘/라벨(탭/링크 이동) + 우측 확장 토글 */}
+              <button
+                key={item.id}
+                onClick={() => { onTabChange(item.id); onClose() }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '14px',
+                  width: '100%', padding: '14px 24px',
+                  background: active ? 'rgba(26,140,245,0.08)' : 'transparent',
+                  border: 'none',
+                  borderLeft: active ? '3px solid #1a8cf5' : '3px solid transparent',
+                  cursor: 'pointer', textAlign: 'left',
+                  fontFamily: 'inherit',
+                  transition: 'background 0.15s',
+                  color: active ? '#1a8cf5' : '#0d1f3c',
+                }}
+              >
                 <div style={{
-                  display: 'flex', alignItems: 'stretch',
-                  background: isActiveTab ? 'rgba(26,140,245,0.08)' : 'transparent',
-                  borderLeft: isActiveTab ? '3px solid #1a8cf5' : '3px solid transparent',
+                  width: '36px', height: '36px', borderRadius: '10px',
+                  background: active
+                    ? 'linear-gradient(135deg, #41b0f8, #3dd9b0)'
+                    : 'rgba(100,150,200,0.12)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                  color: active ? '#fff' : '#5a7a9a',
+                  transition: 'all 0.2s',
                 }}>
-                  <button
-                    onClick={() => handlePrimaryClick(item)}
-                    style={{
-                      flex: 1, minWidth: 0,
-                      display: 'flex', alignItems: 'center', gap: '14px',
-                      padding: '14px 8px 14px 21px',
-                      background: 'none', border: 'none',
-                      cursor: 'pointer', textAlign: 'left',
-                      fontFamily: 'inherit',
-                      color: isActiveTab ? '#1a8cf5' : '#0d1f3c',
-                    }}
-                  >
-                    <div style={{
-                      ...iconBox,
-                      background: isActiveTab
-                        ? 'linear-gradient(135deg, #41b0f8, #3dd9b0)'
-                        : 'rgba(100,150,200,0.12)',
-                      color: isActiveTab ? '#fff' : '#5a7a9a',
-                    }}>
-                      {ICONS[item.icon]}
-                    </div>
-                    <span style={{
-                      ...labelStyle,
-                      fontWeight: isActiveTab ? 600 : 400,
-                    }}>
-                      {item.label}
-                    </span>
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleExpand(item) }}
-                    aria-label={isOpenAcc ? `${item.label} 접기` : `${item.label} 펼치기`}
-                    aria-expanded={isOpenAcc}
-                    style={{
-                      width: '44px',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: '#5a7a9a',
-                      transition: 'transform 0.2s',
-                    }}
-                  >
-                    <span style={{
-                      display: 'inline-flex',
-                      transform: isOpenAcc ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s ease',
-                    }}>
-                      {ICONS.chevronDown}
-                    </span>
-                  </button>
+                  {ICONS[item.icon]}
                 </div>
-
-                {/* 아코디언 컨텐츠 */}
-                {isOpenAcc && (
-                  <div style={{
-                    background: 'rgba(255,255,255,0.55)',
-                    padding: '4px 0 8px',
-                  }}>
-                    {sub === 'loading' && (
-                      <div style={subLoading}>불러오는 중...</div>
-                    )}
-                    {Array.isArray(sub) && sub.length === 0 && (
-                      <div style={subLoading}>항목이 없어요</div>
-                    )}
-                    {Array.isArray(sub) && sub.map(s => (
-                      <Link
-                        key={s.id}
-                        href={s.href}
-                        onClick={onClose}
-                        title={s.title}
-                        style={{
-                          display: 'block',
-                          padding: '8px 24px 8px 70px',
-                          fontSize: '13px',
-                          color: '#3a4d6b',
-                          textDecoration: 'none',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: '100%',
-                        }}
-                      >
-                        · {s.title}
-                      </Link>
-                    ))}
-                    {Array.isArray(sub) && sub.length >= 8 && item.tabId && (
-                      <button
-                        onClick={() => { onTabChange(item.tabId!); onClose() }}
-                        style={subMoreBtn}
-                      >
-                        전체 보기 →
-                      </button>
-                    )}
-                    {Array.isArray(sub) && sub.length >= 8 && !item.tabId && item.href && (
-                      <Link
-                        href={item.href}
-                        onClick={onClose}
-                        style={{ ...subMoreBtn, display: 'inline-block', textDecoration: 'none' }}
-                      >
-                        전체 보기 →
-                      </Link>
-                    )}
-                  </div>
+                <span style={{
+                  fontSize: '14px',
+                  fontWeight: active ? 600 : 400,
+                  letterSpacing: '-0.2px',
+                  flex: 1,
+                }}>
+                  {item.label}
+                </span>
+                {active && (
+                  <span style={{ color: '#8faec8' }}>{ICONS.chevronRight}</span>
                 )}
-              </div>
+              </button>
             )
           })}
+        </nav>
 
-          {/* 구분선 */}
-          <div style={{ height: '1px', background: 'rgba(100,150,200,0.15)', margin: '8px 20px' }} />
+        {/* 구분선 */}
+        <div style={{ height: '1px', background: 'rgba(100,150,200,0.15)', margin: '8px 20px' }} />
 
-          {/* 추가 메뉴 */}
+        {/* 추가 메뉴 */}
+        <nav style={{ flex: 1, overflowY: 'auto' }}>
           {EXTRA_ITEMS.map(item => (
             <Link
               key={item.href}
@@ -494,13 +256,14 @@ export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }: Sid
               }}
             >
               <div style={{
-                ...iconBox,
+                width: '36px', height: '36px', borderRadius: '10px',
                 background: 'rgba(100,150,200,0.10)',
-                color: '#5a7a9a',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, color: '#5a7a9a',
               }}>
                 {ICONS[item.icon]}
               </div>
-              <span style={labelStyle}>
+              <span style={{ fontSize: '14px', fontWeight: 400, letterSpacing: '-0.2px' }}>
                 {item.label}
               </span>
             </Link>
@@ -508,72 +271,25 @@ export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }: Sid
         </nav>
 
         {/* 로그아웃 */}
-        {authed && (
-          <div style={{
-            padding: '16px 24px',
-            paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-            borderTop: '1px solid rgba(100,150,200,0.15)',
-            flexShrink: 0,
-          }}>
-            <button
-              onClick={handleLogout}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: '#5a7a9a', fontSize: '13px', fontFamily: 'inherit',
-              }}
-            >
-              <span style={{ color: '#5a7a9a' }}>{ICONS.logout}</span>
-              로그아웃
-            </button>
-          </div>
-        )}
+        <div style={{
+          padding: '16px 24px',
+          paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+          borderTop: '1px solid rgba(100,150,200,0.15)',
+          flexShrink: 0,
+        }}>
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#5a7a9a', fontSize: '13px', fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ color: '#5a7a9a' }}>{ICONS.logout}</span>
+            로그아웃
+          </button>
+        </div>
       </aside>
     </>
   )
-}
-
-const rowBase: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: '14px',
-  width: '100%', padding: '14px 24px',
-  border: 'none',
-  cursor: 'pointer', textAlign: 'left',
-  fontFamily: 'inherit',
-  transition: 'background 0.15s',
-  minWidth: 0,
-}
-
-const iconBox: React.CSSProperties = {
-  width: '36px', height: '36px', borderRadius: '10px',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  flexShrink: 0,
-  transition: 'all 0.2s',
-}
-
-const labelStyle: React.CSSProperties = {
-  fontSize: '14px',
-  letterSpacing: '-0.2px',
-  flex: 1,
-  minWidth: 0,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-}
-
-const subLoading: React.CSSProperties = {
-  padding: '8px 24px 8px 70px',
-  fontSize: '12px',
-  color: '#8faec8',
-}
-
-const subMoreBtn: React.CSSProperties = {
-  padding: '6px 24px 6px 70px',
-  fontSize: '12px',
-  color: '#1a8cf5',
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-  textAlign: 'left',
-  width: '100%',
 }

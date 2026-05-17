@@ -1,3 +1,6 @@
+// app/layout.tsx
+// 기존 layout.tsx를 이 내용으로 교체하세요
+
 import type { Metadata } from 'next'
 import './globals.css'
 import Script from 'next/script'
