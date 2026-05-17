@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/summarize",
+      "schedule": "59 14 * * *"
+    },
+    {
+      "path": "/api/cron/top5",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
